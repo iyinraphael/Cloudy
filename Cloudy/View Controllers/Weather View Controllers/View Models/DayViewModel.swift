@@ -7,12 +7,14 @@
 //
 
 import UIKit
+import Combine
 
 struct DayViewModel {
 
     // MARK: - Properties
 
-    let weatherData: WeatherData
+    let weatherDataPublisher: AnyPublisher<WeatherData, Never>
+    let weatherDataErrorPublisher: AnyPublisher<WeatherDataError, Never>
     
     // MARK: -
 
@@ -20,11 +22,15 @@ struct DayViewModel {
 
     // MARK: - Public API
     
-    var date: String {
+    var datePublisher: AnyPublisher<String, Never> {
+        let dateFormatter = DateFormatter()
+
         // Configure Date Formatter
         dateFormatter.dateFormat = "EEE, MMMM d"
 
-        return dateFormatter.string(from: weatherData.time)
+        return weatherDataPublisher
+            .map { dateFormatter.string(from: $0.time) }
+            .eraseToAnyPublisher()
     }
     
     var time: String {

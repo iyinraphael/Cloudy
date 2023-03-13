@@ -12,21 +12,28 @@ import CoreLocation
 
 final class RootViewModel: NSObject {
 
-    // MARK: - Type Aliases
-    
-    typealias WeatherDataResult = (Result<WeatherData, WeatherDataError>) -> ()
-    
     // MARK: - Properties
 
     var currentLocationDidChange: (() -> Void)?
     
     // MARK: -
 
-    private(set) var currentLocation: CLLocation? {
-        didSet {
-            currentLocationDidChange?()
-        }
+    var weatherDataPublisher: AnyPublisher<WeatherData, Never> {
+        $weatherData
+            .compactMap{ $0 }
+            .eraseToAnyPublisher()
     }
+
+    var weatherDataErrorPublisher: AnyPublisher<WeatherDataError, Never> {
+        $weatherDataError
+            .compactMap{ $0 }
+            .eraseToAnyPublisher()
+    }
+
+    @Published private(set) var currentLocation: CLLocation?
+
+    @Published private(set) var weatherData: WeatherData?
+    @Published private(set) var weatherDataError: WeatherDataError?
 
     // MARK: -
     
@@ -44,34 +51,30 @@ final class RootViewModel: NSObject {
     // MARK: -
     
     private var weatherDataTask: URLSessionDataTask?
-    private var subscription: AnyCancellable?
+    private var subscriptions: Set<AnyCancellable> = []
     
     // MARK: - Initialization
 
     override init() {
         super.init()
-        
+        // Setup Bindings
+        setupBindings()
+
         // Setup Notification Handling
         setupNotificationHandling()
     }
     
     // MARK: - Public API
 
-    func fetchWeatherData(_ completion: @escaping WeatherDataResult) {
+    func refreshData() {
+        requestLocation()
+    }
+
+    private func fetchWeatherData(for location: CLLocation) {
+
         // Cancel In Progress Data Task
         weatherDataTask?.cancel()
-        
-        guard let location = currentLocation else {
-            switch CLLocationManager.authorizationStatus() {
-            case .denied,
-                 .restricted:
-                completion(.failure(.notAuthorizedToRequestLocation))
-            default:
-                completion(.failure(.failedToRequestLocation))
-            }
-            return
-        }
-        
+
         // Helpers
         let latitude = location.coordinate.latitude
         let longitude = location.coordinate.longitude
@@ -82,7 +85,7 @@ final class RootViewModel: NSObject {
         // Create Data Task
         weatherDataTask = URLSession.shared.dataTask(with: url) { (data, response, error) in
             DispatchQueue.main.async {
-                self.didFetchWeatherData(data: data, response: response, error: error, completion: completion)
+                self.didFetchWeatherData(data: data, response: response, error: error)
             }
         }
         
@@ -91,17 +94,30 @@ final class RootViewModel: NSObject {
     }
 
     // MARK: - Helper Methods
+
+    private func setupBindings() {
+        $currentLocation
+            .compactMap { $0 }
+            .sink { [weak self] location in
+                self?.fetchWeatherData(for: location)
+            }.store(in: &subscriptions)
+    }
     
     private func setupNotificationHandling() {
+        let dateFormatter = DateFormatter()
+
+        dateFormatter.timeStyle = .medium
+
         NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.requestLocation()
-            print("did receive notification > NOT Reactive")
+            print("\(dateFormatter.string(from: Date())) did receive notification > NOT throttled")
         }
 
-        subscription = NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+       NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .throttle(for: .seconds(30), scheduler: DispatchQueue.main, latest: false)
             .sink { notification in
-                print("did receive notification > Reactive")
-            }
+                print("\(dateFormatter.string(from: Date())) did receive notification > throttled")
+            }.store(in: &subscriptions)
     }
     
     // MARK: -
@@ -121,9 +137,9 @@ final class RootViewModel: NSObject {
 
     // MARK: -
     
-    private func didFetchWeatherData(data: Data?, response: URLResponse?, error: Error?, completion: WeatherDataResult) {
+    private func didFetchWeatherData(data: Data?, response: URLResponse?, error: Error?) {
         if let error = error {
-            completion(.failure(.failedRequest))
+            weatherDataError = .failedRequest
             print("Unable to Fetch Weather Data, \(error)")
 
         } else if let data = data, let response = response as? HTTPURLResponse {
@@ -136,18 +152,15 @@ final class RootViewModel: NSObject {
                     decoder.dateDecodingStrategy = .secondsSince1970
                     
                     // Decode JSON
-                    let weatherData = try decoder.decode(WeatherData.self, from: data)
-
-                    // Invoke Completion Handler
-                    completion(.success(weatherData))
+                    weatherData = try decoder.decode(WeatherData.self, from: data)
 
                 } catch {
-                    completion(.failure(.invalidResponse))
+                    weatherDataError = .invalidResponse
                     print("Unable to Decode Response, \(error)")
                 }
 
             } else {
-                completion(.failure(.failedRequest))
+                weatherDataError = .failedRequest
             }
 
         } else {
