@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import Combine
 
 protocol DayViewControllerDelegate: AnyObject {
     func controllerDidTapSettingsButton(controller: DayViewController)
@@ -27,14 +28,21 @@ final class DayViewController: WeatherViewController {
     // MARK: -
 
     weak var delegate: DayViewControllerDelegate?
+    private var subscription: Set<AnyCancellable> = []
 
     // MARK: -
 
-    var viewModel: DayViewModel? {
-        didSet {
-            updateView()
-        }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        //Setup Bindings
+        setupBindings()
+
+        //Update View
+        updateView()
     }
+
+    var viewModel: DayViewModel?
 
     // MARK: - Public Interface
 
@@ -45,10 +53,7 @@ final class DayViewController: WeatherViewController {
     // MARK: - View Methods
 
     private func updateView() {
-        activityIndicatorView.stopAnimating()
-
-        if let viewModel = viewModel {
-            updateWeatherDataContainerView(with: viewModel)
+        if let _ = viewModel {
 
         } else {
             messageLabel.isHidden = false
@@ -58,15 +63,39 @@ final class DayViewController: WeatherViewController {
 
     // MARK: -
 
-    private func updateWeatherDataContainerView(with viewModel: DayViewModel) {
-        weatherDataContainerView.isHidden = false
-        
-        dateLabel.text = viewModel.date
-        timeLabel.text = viewModel.time
-        iconImageView.image = viewModel.image
-        windSpeedLabel.text = viewModel.windSpeed
-        descriptionLabel.text = viewModel.summary
-        temperatureLabel.text = viewModel.temperature
+    private func setupBindings() {
+        viewModel?.datePublisher
+            .assign(to: \.text, on: dateLabel)
+            .store(in: &subscription)
+
+        viewModel?.timePublisher
+            .assign(to: \.text, on: timeLabel)
+            .store(in: &subscription)
+
+        viewModel?.summaryPublisher
+            .assign(to: \.text, on: descriptionLabel)
+            .store(in: &subscription)
+
+        viewModel?.temperaturePublisher
+            .assign(to: \.text, on: temperatureLabel)
+            .store(in: &subscription)
+
+        viewModel?.windSpeedPublisher
+            .assign(to: \.text, on: windSpeedLabel)
+            .store(in: &subscription)
+
+        viewModel?.imagePublisher
+            .assign(to: \.image, on: iconImageView)
+            .store(in: &subscription)
+
+        viewModel?.loadingPublisher
+            .assign(to: \.isHidden, on: weatherDataContainerView)
+            .store(in: &subscription)
+
+        viewModel?.loadingPublisher
+            .map{ !$0 }
+            .assign(to: \.isHidden, on: activityIndicatorView)
+            .store(in: &subscription)
     }
 
     // MARK: - Actions

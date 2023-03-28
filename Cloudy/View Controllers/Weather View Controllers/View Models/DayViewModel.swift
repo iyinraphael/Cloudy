@@ -13,16 +13,17 @@ struct DayViewModel {
 
     // MARK: - Properties
 
+    let loadingPublisher: AnyPublisher<Bool, Never>
     let weatherDataPublisher: AnyPublisher<WeatherData, Never>
     let weatherDataErrorPublisher: AnyPublisher<WeatherDataError, Never>
-    
+
     // MARK: -
 
     private let dateFormatter = DateFormatter()
 
     // MARK: - Public API
     
-    var datePublisher: AnyPublisher<String, Never> {
+    var datePublisher: AnyPublisher<String?, Never> {
         let dateFormatter = DateFormatter()
 
         // Configure Date Formatter
@@ -33,41 +34,54 @@ struct DayViewModel {
             .eraseToAnyPublisher()
     }
     
-    var time: String {
+    var timePublisher: AnyPublisher<String?, Never> {
+        let dateFormatter = DateFormatter()
+
         // Configure Date Formatter
         dateFormatter.dateFormat = UserDefaults.timeNotation.dateFormat
 
-        return dateFormatter.string(from: weatherData.time)
+        return weatherDataPublisher
+            .map { dateFormatter.string(from: $0.time) }
+            .eraseToAnyPublisher()
     }
  
-    var summary: String {
-        weatherData.summary
+    var summaryPublisher: AnyPublisher<String?, Never> {
+
+        return weatherDataPublisher
+            .map { $0.summary }
+            .eraseToAnyPublisher()
     }
 
-    var temperature: String {
-        let temperature = weatherData.temperature
-        
-        switch UserDefaults.temperatureNotation {
-        case .fahrenheit:
-            return String(format: "%.1f °F", temperature)
-        case .celsius:
-            return String(format: "%.1f °C", temperature.toCelcius)
-        }
+    var temperaturePublisher: AnyPublisher<String?, Never> {
+        weatherDataPublisher
+            .map {
+                switch UserDefaults.temperatureNotation {
+                case .fahrenheit:
+                    return String(format: "%.1f °F", $0.temperature)
+                case .celsius:
+                    return String(format: "%.1f °C", $0.temperature.toCelcius)
+                }
+            }
+            .eraseToAnyPublisher()
     }
  
-    var windSpeed: String {
-        let windSpeed = weatherData.windSpeed
-
-        switch UserDefaults.unitsNotation {
-        case .imperial:
-            return String(format: "%.f MPH", windSpeed)
-        case .metric:
-            return String(format: "%.f KPH", windSpeed.toKPH)
-        }
+    var windSpeedPublisher: AnyPublisher<String?, Never> {
+        weatherDataPublisher
+            .map {
+                switch UserDefaults.unitsNotation {
+                case .imperial:
+                    return String(format: "%.f MPH", $0.windSpeed)
+                case .metric:
+                    return String(format: "%.f KPH", $0.windSpeed.toKPH)
+                }
+            }
+            .eraseToAnyPublisher()
     }
 
-    var image: UIImage? {
-        UIImage.imageForIcon(with: weatherData.icon)
+    var imagePublisher: AnyPublisher<UIImage?, Never> {
+        weatherDataPublisher
+            .map {  UIImage.imageForIcon(with: $0.icon) }
+            .eraseToAnyPublisher()
     }
     
 }

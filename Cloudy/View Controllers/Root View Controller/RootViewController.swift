@@ -68,7 +68,10 @@ final class RootViewController: UIViewController {
 
             // Update Day View Controller
             self.dayViewController = destination
-            self.dayViewController.viewModel = DayViewModel(weatherDataPublisher: viewModel.weatherDataPublisher, weatherDataErrorPublisher: viewModel.weatherDataErrorPublisher)
+            self.dayViewController.viewModel = DayViewModel(
+                loadingPublisher: viewModel.loadingPublisher,
+                weatherDataPublisher: viewModel.weatherDataPublisher,
+                weatherDataErrorPublisher: viewModel.weatherDataErrorPublisher)
 
         case Segue.weekView:
             guard let destination = segue.destination as? WeekViewController else {

@@ -30,6 +30,11 @@ final class RootViewModel: NSObject {
             .eraseToAnyPublisher()
     }
 
+    var loadingPublisher: AnyPublisher<Bool, Never> {
+        loadingSubject
+            .eraseToAnyPublisher()
+    }
+
     @Published private(set) var currentLocation: CLLocation?
 
     @Published private(set) var weatherData: WeatherData?
@@ -52,6 +57,7 @@ final class RootViewModel: NSObject {
     
     private var weatherDataTask: URLSessionDataTask?
     private var subscriptions: Set<AnyCancellable> = []
+    private let loadingSubject = PassthroughSubject<Bool, Never>()
     
     // MARK: - Initialization
 
@@ -83,14 +89,16 @@ final class RootViewModel: NSObject {
         let url = WeatherServiceRequest(latitude: latitude, longitude: longitude).url
         
         // Create Data Task
-        weatherDataTask = URLSession.shared.dataTask(with: url) { (data, response, error) in
+        weatherDataTask = URLSession.shared.dataTask(with: url) { [weak self] (data, response, error) in
             DispatchQueue.main.async {
-                self.didFetchWeatherData(data: data, response: response, error: error)
+                self?.loadingSubject.send(false)
+                self?.didFetchWeatherData(data: data, response: response, error: error)
             }
         }
         
         // Start Data Task
         weatherDataTask?.resume()
+        loadingSubject.send(true)
     }
 
     // MARK: - Helper Methods
@@ -108,14 +116,10 @@ final class RootViewModel: NSObject {
 
         dateFormatter.timeStyle = .medium
 
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.requestLocation()
-            print("\(dateFormatter.string(from: Date())) did receive notification > NOT throttled")
-        }
-
        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
             .throttle(for: .seconds(30), scheduler: DispatchQueue.main, latest: false)
-            .sink { notification in
+            .sink { [weak self] _ in
+                self?.requestLocation()
                 print("\(dateFormatter.string(from: Date())) did receive notification > throttled")
             }.store(in: &subscriptions)
     }
