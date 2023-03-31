@@ -68,10 +68,7 @@ final class RootViewController: UIViewController {
 
             // Update Day View Controller
             self.dayViewController = destination
-            self.dayViewController.viewModel = DayViewModel(
-                loadingPublisher: viewModel.loadingPublisher,
-                weatherDataPublisher: viewModel.weatherDataPublisher,
-                weatherDataErrorPublisher: viewModel.weatherDataErrorPublisher)
+            self.dayViewController.viewModel = DayViewModel(weatherDataStatePublisher: viewModel.weatherDataStatePublisher)
 
         case Segue.weekView:
             guard let destination = segue.destination as? WeekViewController else {
@@ -119,29 +116,30 @@ final class RootViewController: UIViewController {
 
     private func fetchWeatherData() {
         // Fetch Weather Data for Location
-        viewModel?.$weatherData
+        viewModel?.weatherDataStatePublisher
             .compactMap { $0 }
-            .sink(receiveValue: { [weak self] weatherData in
-                // Configure Week View Controller
-                self?.weekViewController.viewModel = WeekViewModel(weatherData: weatherData.dailyData)
-            }).store(in: &subscriptions)
+            .sink(receiveValue: { [weak self] state in
+                switch state {
+                case .data(let weatherData):
+                    // Configure Week View Controller
+                    self?.weekViewController.viewModel = WeekViewModel(weatherData: weatherData.dailyData)
+                case .error(let error):
+                    switch error {
+                    case .notAuthorizedToRequestLocation:
+                        self?.presentAlert(of: .notAuthorizedToRequestLocation)
+                    case .failedToRequestLocation:
+                        self?.presentAlert(of: .failedToRequestLocation)
+                    case .failedRequest,
+                         .invalidResponse:
+                        self?.presentAlert(of: .noWeatherDataAvailable)
+                    }
 
-        viewModel?.$weatherDataError
-            .compactMap { $0 }
-            .sink(receiveValue: { [weak self] error in
-                switch error {
-                case .notAuthorizedToRequestLocation:
-                    self?.presentAlert(of: .notAuthorizedToRequestLocation)
-                case .failedToRequestLocation:
-                    self?.presentAlert(of: .failedToRequestLocation)
-                case .failedRequest,
-                     .invalidResponse:
-                    self?.presentAlert(of: .noWeatherDataAvailable)
+                    // Update Child View Controllers
+                    self?.dayViewController.viewModel = nil
+                    self?.weekViewController.viewModel = nil
+                default:
+                    print("loading")
                 }
-
-                // Update Child View Controllers
-                self?.dayViewController.viewModel = nil
-                self?.weekViewController.viewModel = nil
             }).store(in: &subscriptions)
     }
     

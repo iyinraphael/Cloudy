@@ -9,17 +9,32 @@
 import UIKit
 import Combine
 
+
 struct DayViewModel {
 
     // MARK: - Properties
 
-    let loadingPublisher: AnyPublisher<Bool, Never>
-    let weatherDataPublisher: AnyPublisher<WeatherData, Never>
-    let weatherDataErrorPublisher: AnyPublisher<WeatherDataError, Never>
+    let weatherDataStatePublisher: AnyPublisher<WeatherDataState, Never>
 
     // MARK: -
 
-    private let dateFormatter = DateFormatter()
+    var loadingPublisher: AnyPublisher<Bool, Never> {
+           weatherDataStatePublisher
+               .map { $0.isLoading }
+               .eraseToAnyPublisher()
+       }
+
+       var hasWeatherDataPublisher: AnyPublisher<Bool, Never> {
+           weatherDataStatePublisher
+               .map { $0.weatherData != nil }
+               .eraseToAnyPublisher()
+       }
+
+       var hasWeatherDataErrorPublisher: AnyPublisher<Bool, Never> {
+           weatherDataStatePublisher
+               .map { $0.weatherDataError != nil }
+               .eraseToAnyPublisher()
+       }
 
     // MARK: - Public API
     
@@ -29,7 +44,8 @@ struct DayViewModel {
         // Configure Date Formatter
         dateFormatter.dateFormat = "EEE, MMMM d"
 
-        return weatherDataPublisher
+        return weatherDataStatePublisher
+            .compactMap { $0.weatherData }
             .map { dateFormatter.string(from: $0.time) }
             .eraseToAnyPublisher()
     }
@@ -40,33 +56,37 @@ struct DayViewModel {
         // Configure Date Formatter
         dateFormatter.dateFormat = UserDefaults.timeNotation.dateFormat
 
-        return weatherDataPublisher
+        return weatherDataStatePublisher
+            .compactMap { $0.weatherData }
             .map { dateFormatter.string(from: $0.time) }
             .eraseToAnyPublisher()
     }
  
     var summaryPublisher: AnyPublisher<String?, Never> {
 
-        return weatherDataPublisher
+        return weatherDataStatePublisher
+            .compactMap { $0.weatherData }
             .map { $0.summary }
             .eraseToAnyPublisher()
     }
 
     var temperaturePublisher: AnyPublisher<String?, Never> {
-        weatherDataPublisher
+        weatherDataStatePublisher
+            .compactMap { $0.weatherData }
             .map {
                 switch UserDefaults.temperatureNotation {
                 case .fahrenheit:
-                    return String(format: "%.1f °F", $0.temperature)
+                    return String(format: "%.1f °F", $0!.temperature)
                 case .celsius:
-                    return String(format: "%.1f °C", $0.temperature.toCelcius)
+                    return String(format: "%.1f °C", $0!.temperature.toCelcius)
                 }
             }
             .eraseToAnyPublisher()
     }
  
     var windSpeedPublisher: AnyPublisher<String?, Never> {
-        weatherDataPublisher
+        weatherDataStatePublisher
+            .compactMap { $0.weatherData }
             .map {
                 switch UserDefaults.unitsNotation {
                 case .imperial:
@@ -79,7 +99,8 @@ struct DayViewModel {
     }
 
     var imagePublisher: AnyPublisher<UIImage?, Never> {
-        weatherDataPublisher
+        weatherDataStatePublisher
+            .compactMap { $0.weatherData }
             .map {  UIImage.imageForIcon(with: $0.icon) }
             .eraseToAnyPublisher()
     }

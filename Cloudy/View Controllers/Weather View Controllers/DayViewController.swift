@@ -28,7 +28,7 @@ final class DayViewController: WeatherViewController {
     // MARK: -
 
     weak var delegate: DayViewControllerDelegate?
-    private var subscription: Set<AnyCancellable> = []
+    private var subscriptions: Set<AnyCancellable> = []
 
     // MARK: -
 
@@ -53,12 +53,7 @@ final class DayViewController: WeatherViewController {
     // MARK: - View Methods
 
     private func updateView() {
-        if let _ = viewModel {
-
-        } else {
-            messageLabel.isHidden = false
-            messageLabel.text = "Cloudy was unable to fetch weather data."
-        }
+        messageLabel.text = "Cloudy was unable to fetch weather data."
     }
 
     // MARK: -
@@ -66,36 +61,42 @@ final class DayViewController: WeatherViewController {
     private func setupBindings() {
         viewModel?.datePublisher
             .assign(to: \.text, on: dateLabel)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
 
         viewModel?.timePublisher
             .assign(to: \.text, on: timeLabel)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
 
         viewModel?.summaryPublisher
             .assign(to: \.text, on: descriptionLabel)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
 
         viewModel?.temperaturePublisher
             .assign(to: \.text, on: temperatureLabel)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
 
         viewModel?.windSpeedPublisher
             .assign(to: \.text, on: windSpeedLabel)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
 
         viewModel?.imagePublisher
             .assign(to: \.image, on: iconImageView)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
 
         viewModel?.loadingPublisher
-            .assign(to: \.isHidden, on: weatherDataContainerView)
-            .store(in: &subscription)
-
-        viewModel?.loadingPublisher
-            .map{ !$0 }
+            .map { !$0 }
             .assign(to: \.isHidden, on: activityIndicatorView)
-            .store(in: &subscription)
+            .store(in: &subscriptions)
+
+        viewModel?.hasWeatherDataPublisher
+            .map { !$0 }
+            .assign(to: \.isHidden, on: weatherDataContainerView)
+            .store(in: &subscriptions)
+
+        viewModel?.hasWeatherDataErrorPublisher
+            .map { !$0 }
+            .assign(to: \.isHidden, on: messageLabel)
+            .store(in: &subscriptions)
     }
 
     // MARK: - Actions

@@ -18,27 +18,12 @@ final class RootViewModel: NSObject {
     
     // MARK: -
 
-    var weatherDataPublisher: AnyPublisher<WeatherData, Never> {
-        $weatherData
-            .compactMap{ $0 }
-            .eraseToAnyPublisher()
-    }
-
-    var weatherDataErrorPublisher: AnyPublisher<WeatherDataError, Never> {
-        $weatherDataError
-            .compactMap{ $0 }
-            .eraseToAnyPublisher()
-    }
-
-    var loadingPublisher: AnyPublisher<Bool, Never> {
-        loadingSubject
+    var weatherDataStatePublisher: AnyPublisher<WeatherDataState, Never> {
+        weatherDataStateSubject
             .eraseToAnyPublisher()
     }
 
     @Published private(set) var currentLocation: CLLocation?
-
-    @Published private(set) var weatherData: WeatherData?
-    @Published private(set) var weatherDataError: WeatherDataError?
 
     // MARK: -
     
@@ -57,7 +42,7 @@ final class RootViewModel: NSObject {
     
     private var weatherDataTask: URLSessionDataTask?
     private var subscriptions: Set<AnyCancellable> = []
-    private let loadingSubject = PassthroughSubject<Bool, Never>()
+    private let weatherDataStateSubject = PassthroughSubject<WeatherDataState, Never>()
     
     // MARK: - Initialization
 
@@ -91,14 +76,13 @@ final class RootViewModel: NSObject {
         // Create Data Task
         weatherDataTask = URLSession.shared.dataTask(with: url) { [weak self] (data, response, error) in
             DispatchQueue.main.async {
-                self?.loadingSubject.send(false)
                 self?.didFetchWeatherData(data: data, response: response, error: error)
             }
         }
         
         // Start Data Task
         weatherDataTask?.resume()
-        loadingSubject.send(true)
+        weatherDataStateSubject.send(.loading)
     }
 
     // MARK: - Helper Methods
@@ -143,7 +127,7 @@ final class RootViewModel: NSObject {
     
     private func didFetchWeatherData(data: Data?, response: URLResponse?, error: Error?) {
         if let error = error {
-            weatherDataError = .failedRequest
+            weatherDataStateSubject.send(.error(.failedRequest))
             print("Unable to Fetch Weather Data, \(error)")
 
         } else if let data = data, let response = response as? HTTPURLResponse {
@@ -156,18 +140,20 @@ final class RootViewModel: NSObject {
                     decoder.dateDecodingStrategy = .secondsSince1970
                     
                     // Decode JSON
-                    weatherData = try decoder.decode(WeatherData.self, from: data)
+                    let weatherData = try decoder.decode(WeatherData.self, from: data)
+                        weatherDataStateSubject.send(.data(weatherData))
 
                 } catch {
-                    weatherDataError = .invalidResponse
+                    weatherDataStateSubject.send(.error(.invalidResponse))
                     print("Unable to Decode Response, \(error)")
                 }
 
             } else {
-                weatherDataError = .failedRequest
+                weatherDataStateSubject.send(.error(.failedRequest))
             }
 
         } else {
+            weatherDataStateSubject.send(.error(.invalidResponse))
             fatalError("Invalid Response")
         }
     }

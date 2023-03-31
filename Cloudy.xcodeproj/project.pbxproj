@@ -55,6 +55,7 @@
 		CCE6DD8B24A0FDD700A3C023 /* weather.json in Resources */ = {isa = PBXBuildFile; fileRef = CCE6DD8A24A0FDD700A3C023 /* weather.json */; };
 		CCE6DD8D24A0FEE400A3C023 /* XCTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE6DD8C24A0FEE400A3C023 /* XCTestCase.swift */; };
 		CCE6DD8F24A1020C00A3C023 /* DayViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE6DD8E24A1020C00A3C023 /* DayViewModelTests.swift */; };
+		EB24164329D49977004B33AB /* WeatherDataState.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB24164229D49977004B33AB /* WeatherDataState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,6 +121,7 @@
 		CCE6DD8A24A0FDD700A3C023 /* weather.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = weather.json; sourceTree = "<group>"; };
 		CCE6DD8C24A0FEE400A3C023 /* XCTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestCase.swift; sourceTree = "<group>"; };
 		CCE6DD8E24A1020C00A3C023 /* DayViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayViewModelTests.swift; sourceTree = "<group>"; };
+		EB24164229D49977004B33AB /* WeatherDataState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherDataState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -366,6 +368,7 @@
 				CC4AF1D5246E94EC0013D68C /* TimeNotation.swift */,
 				CC4AF1D9246E95590013D68C /* UnitsNotation.swift */,
 				CC4AF1DB246E95660013D68C /* TemperatureNotation.swift */,
+				EB24164229D49977004B33AB /* WeatherDataState.swift */,
 			);
 			path = Types;
 			sourceTree = "<group>";
@@ -565,6 +568,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB24164329D49977004B33AB /* WeatherDataState.swift in Sources */,
 				CC4AF182246E83960013D68C /* AppDelegate.swift in Sources */,
 				CCD4BAE42518EA9900F0DF0D /* RootViewModel.swift in Sources */,
 				CC4AF1B1246E84A20013D68C /* DayViewController.swift in Sources */,
