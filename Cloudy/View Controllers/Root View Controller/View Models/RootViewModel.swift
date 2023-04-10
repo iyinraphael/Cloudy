@@ -26,7 +26,17 @@ final class RootViewModel: NSObject {
     @Published private(set) var currentLocation: CLLocation?
 
     // MARK: -
-    
+
+    private var currentLocationPublisher: AnyPublisher<CLLocation, Never> {
+        Publishers.Zip($currentLocation, $currentLocation.dropFirst())
+            .compactMap{ previousLocation, currentLocation -> CLLocation? in
+                guard let previousLocation, let currentLocation else { return currentLocation }
+
+                return previousLocation.distance(from: currentLocation) > 10_000 ? currentLocation : nil
+            }
+            .eraseToAnyPublisher()
+    }
+
     private lazy var locationManager: CLLocationManager = {
         // Initialize Location Manager
         let locationManager = CLLocationManager()
