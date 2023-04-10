@@ -58,14 +58,20 @@ final class RootViewModel: NSObject {
 
     override init() {
         super.init()
+    }
+    
+    // MARK: - Public API
+
+    func start() {
         // Setup Bindings
         setupBindings()
 
         // Setup Notification Handling
         setupNotificationHandling()
+
+        //Update Weather Data State Subject
+        weatherDataStateSubject.send(.loading)
     }
-    
-    // MARK: - Public API
 
     func refreshData() {
         requestLocation()
@@ -98,11 +104,19 @@ final class RootViewModel: NSObject {
     // MARK: - Helper Methods
 
     private func setupBindings() {
-        $currentLocation
-            .compactMap { $0 }
+        let weatherDataPublisher = weatherDataStateSubject
+            .map { $0.weatherData }
+
+        currentLocationPublisher.combineLatest(weatherDataPublisher)
+            .compactMap { location, weatherData -> CLLocation? in
+                guard let weatherData else { return location }
+
+                return Date().timeIntervalSince(weatherData.time) > 3_600 ? location : nil
+            }
             .sink { [weak self] location in
                 self?.fetchWeatherData(for: location)
-            }.store(in: &subscriptions)
+            }
+            .store(in: &subscriptions)
     }
     
     private func setupNotificationHandling() {

@@ -48,6 +48,9 @@ final class RootViewController: UIViewController {
 
        // Setup Bindings
         fetchWeatherData()
+
+        // Start View Model
+        viewModel?.start()
     }
 
     // MARK: - Navigation
